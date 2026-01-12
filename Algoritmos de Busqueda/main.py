@@ -7,6 +7,7 @@ from gui.menus import MainSelectionScreen, DivideMenuScreen
 from gui.karatsuba_screens import KaratsubaInputScreen
 from gui.search_algorithms import SearchAlgorithmScreen
 from gui.order_choice import OrderChoiceScreen
+from gui.pi_gui import PiInputScreen
 from algoritmos.data_manager import DataManager
 import algoritmos.sorts as sorts
 
@@ -83,6 +84,7 @@ class AppController:
             self.master,
             on_karatsuba_callback=self.show_karatsuba_input,
             on_strassen_callback=self.show_strassen,
+            on_pi_callback=self.show_pi_input,
             on_back_callback=self.show_main_selection
         )
 
@@ -97,6 +99,11 @@ class AppController:
             self.master,
             on_back_callback=self.show_divide_menu
     )
+    def show_pi_input(self):
+        PiInputScreen(
+            self.master,
+            on_back_callback=self.show_divide_menu
+        )
 
 if __name__ == "__main__":
     root = tk.Tk()

@@ -6,6 +6,7 @@ class MainSelectionScreen(tk.Toplevel):
         super().__init__(master)
         self.on_sorting = on_sorting_callback
         self.on_divide = on_divide_callback
+
         self.on_back = on_back_callback # Callback para volver
         
         self.title("Selección de Categoría")
@@ -58,10 +59,11 @@ class MainSelectionScreen(tk.Toplevel):
 
 
 class DivideMenuScreen(tk.Toplevel):
-    def __init__(self, master, on_karatsuba_callback,on_strassen_callback,on_back_callback):
+    def __init__(self, master, on_karatsuba_callback,on_strassen_callback,on_pi_callback,on_back_callback):
         super().__init__(master)
         self.on_karatsuba = on_karatsuba_callback
         self.on_strassen = on_strassen_callback
+        self.on_pi = on_pi_callback
         self.on_back = on_back_callback
         
         self.title("Algoritmos de tipo Divide y Vencerás")
@@ -95,7 +97,7 @@ class DivideMenuScreen(tk.Toplevel):
         tk.Button(
             self, text="Generación de PI (10000 cifras)", 
             font=("Helvetica", 10), bg="#e4efd9", width=30, height=2,
-            command=lambda: messagebox.showinfo("Info", "Algoritmo en construcción.")
+            command=self._go_pi 
         ).pack(pady=10)
 
         # Botón Volver
@@ -112,7 +114,13 @@ class DivideMenuScreen(tk.Toplevel):
     def _go_strassen(self):
         self.destroy()
         self.on_strassen()
+    
+    def _go_pi(self):
+        self.destroy()
+        self.on_pi()
 
     def _go_back(self):
         self.destroy()
         self.on_back()
+        
+    

@@ -65,10 +65,10 @@ class KaratsubaInputScreen(tk.Toplevel):
         btn_box.pack(pady=20)
 
         tk.Button(btn_box, text="Cargar y Continuar", bg="#333", fg="white", font=("Helvetica", 10, "bold"),
-                  command=self._on_continue).pack(side="left", padx=10, ipadx=10, ipady=5)
+                command=self._on_continue).pack(side="left", padx=10, ipadx=10, ipady=5)
         
         tk.Button(btn_box, text="Volver", bg="#d9534f", fg="white", font=("Helvetica", 10, "bold"),
-                  command=self._go_back).pack(side="left", padx=10, ipadx=10, ipady=5)
+                command=self._go_back).pack(side="left", padx=10, ipadx=10, ipady=5)
 
     def _toggle_inputs(self):
         mode = self.input_mode.get()

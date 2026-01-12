@@ -1,0 +1,1884 @@
+=== ESTRUCTURA DEL PROYECTO ===
+
+Busquedas-de-ordenamiento/
+    Algoritmos de Busqueda/
+        main.py
+        recolector.py
+        algoritmos/
+            data_manager.py
+            karatsuba.py
+            sorts.py
+            stats_manager.py
+            __init__.py
+        gui/
+            input.py
+            karatsuba_screens.py
+            menus.py
+            order_choice.py
+            search_algorithms.py
+            sorters.py
+            Strassen.py
+            welcome.py
+            __init__.py
+        utils/
+            __init__.py
+
+==================================================
+
+=== CONTENIDO DE LOS ARCHIVOS ===
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\main.py
+--------------------------------------------------
+import tkinter as tk
+# Importamos todas las pantallas
+from gui.Strassen import StrassenApp
+from gui.welcome import WelcomeScreen
+from gui.input import InputOptionsScreen
+from gui.menus import MainSelectionScreen, DivideMenuScreen
+from gui.karatsuba_screens import KaratsubaInputScreen
+from gui.search_algorithms import SearchAlgorithmScreen
+from gui.order_choice import OrderChoiceScreen
+from algoritmos.data_manager import DataManager
+import algoritmos.sorts as sorts
+
+class AppController:
+    def __init__(self, master):
+        self.master = master
+        self.dm = DataManager()
+        self.master.withdraw()
+        self.show_welcome_screen()
+
+    # --- 1. BIENVENIDA ---
+    def show_welcome_screen(self):
+        WelcomeScreen(
+            self.master,
+            next_callback=self.show_main_selection
+        )
+
+    # --- 2. SELECCIÓN PRINCIPAL ---
+    def show_main_selection(self):
+        MainSelectionScreen(
+            self.master,
+            on_sorting_callback=self.show_sorting_input,  # Rama Original
+            on_divide_callback=self.show_divide_menu,     # Rama Nueva
+            on_back_callback=self.show_welcome_screen
+        )
+
+    # ================= RAMA A: ORIGINAL (Búsqueda y Ordenamiento) =================
+    
+    # Paso A1: Ingreso de Datos
+    def show_sorting_input(self):
+        InputOptionsScreen(
+            self.master,
+            data_manager=self.dm,
+            next_callback=self.show_order_choice, # Vamos a la elección de orden
+            on_back_callback=self.show_main_selection
+        )
+
+    # Paso A2: ¿Ordenar o Desordenar? (RESTAURADO)
+    def show_order_choice(self):
+        OrderChoiceScreen(
+            self.master,
+            data_manager=self.dm,
+            next_callback=self.show_original_search_flow, # Siguiente paso: lógica de ordenamiento
+            on_back_callback=self.show_sorting_input
+        )
+
+    # Paso A3: Lógica Condicional + Interfaz Original
+    def show_original_search_flow(self):
+        # Verificamos qué eligió el usuario en el DataManager
+        if self.dm.order_mode == "ordered":
+            # Si quiere ordenados, aplicamos Quicksort interno
+            data = self.dm.get_data_copy()
+            try:
+                sorted_data, _ = sorts.quicksort_recursive(data)
+                # Actualizamos los datos en el gestor
+                sorted_str = ",".join(map(str, sorted_data))
+                self.dm.set_data_manual(sorted_str)
+            except RecursionError:
+                print("Advertencia: Falló el ordenamiento por exceso de recursión.")
+        
+        # Si eligió 'unordered', no hacemos nada y pasamos los datos tal cual.
+
+        # Abrimos la ventana final restaurada
+        SearchAlgorithmScreen(
+            self.master,
+            data_manager=self.dm,
+            on_back_callback=self.show_order_choice
+        )
+
+    # ================= RAMA B: DIVIDE Y VENCERÁS (KARATSUBA) =================
+    
+    def show_divide_menu(self):
+        DivideMenuScreen(
+            self.master,
+            on_karatsuba_callback=self.show_karatsuba_input,
+            on_strassen_callback=self.show_strassen,
+            on_back_callback=self.show_main_selection
+        )
+
+    def show_karatsuba_input(self):
+        KaratsubaInputScreen(
+            self.master,
+            data_manager=self.dm,
+            on_back_callback=self.show_divide_menu
+        )
+    def show_strassen(self):
+        StrassenApp(
+            self.master,
+            on_back_callback=self.show_divide_menu
+    )
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AppController(root)
+    root.mainloop()
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\main.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\data_manager.py
+--------------------------------------------------
+import random
+from typing import List
+
+
+class DataManager:
+    """
+    Administra datos y selecciones del usuario.
+    No contiene algoritmos.
+    """
+
+    def __init__(self):
+        self._base_data: List[int] = []
+        self.order_mode = "unordered"
+        self.selected_algorithm = None
+
+    @property
+    def base_data(self) -> List[int]:
+        return self._base_data
+
+    def get_data_copy(self) -> List[int]:
+        return list(self._base_data)
+
+    def clear_data(self):
+        self._base_data = []
+
+    def set_data_manual(self, input_string: str):
+        try:
+            data_list = [
+                int(item.strip())
+                for item in input_string.split(',')
+                if item.strip()
+            ]
+            if not data_list:
+                raise ValueError
+            self._base_data = data_list
+        except ValueError:
+            raise ValueError(
+                "Ingrese solo números enteros separados por comas."
+            )
+
+    def set_data_random(self, count: int):
+        if count <= 0:
+            raise ValueError("La cantidad debe ser mayor a cero.")
+        self._base_data = [
+            random.randint(1, 1_000_000)
+            for _ in range(count)
+        ]
+
+    def set_order_mode(self, mode: str):
+        self.order_mode = mode
+
+    def set_selected_algorithm(self, algorithm_name: str):
+        self.selected_algorithm = algorithm_name
+
+
+
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\data_manager.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\karatsuba.py
+--------------------------------------------------
+# algoritmos/karatsuba.py
+import time
+from typing import Tuple
+
+
+def _time_it(func):
+    def wrapper(*args, **kwargs) -> Tuple[int, float]:
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        end = time.perf_counter()
+        return result, (end - start) * 1000
+    return wrapper
+
+
+# ---------------- KARATSUBA RECURSIVO ----------------
+def _karatsuba_rec(x: int, y: int) -> int:
+    if x < 10 or y < 10:
+        return x * y
+
+    n = max(len(str(x)), len(str(y)))
+    m = n // 2
+
+    high_x, low_x = divmod(x, 10 ** m)
+    high_y, low_y = divmod(y, 10 ** m)
+
+    z0 = _karatsuba_rec(low_x, low_y)
+    z1 = _karatsuba_rec(low_x + high_x, low_y + high_y)
+    z2 = _karatsuba_rec(high_x, high_y)
+
+    return (z2 * 10 ** (2 * m)) + ((z1 - z2 - z0) * 10 ** m) + z0
+
+
+@_time_it
+def karatsuba_recursive(x: int, y: int) -> int:
+    return _karatsuba_rec(x, y)
+
+
+# ---------------- KARATSUBA ITERATIVO ----------------
+@_time_it
+def karatsuba_iterative(x: int, y: int) -> int:
+    stack = [(x, y, False)]
+    results = {}
+
+    while stack:
+        a, b, processed = stack.pop()
+
+        if a < 10 or b < 10:
+            results[(a, b)] = a * b
+            continue
+
+        n = max(len(str(a)), len(str(b)))
+        m = n // 2
+
+        high_a, low_a = divmod(a, 10 ** m)
+        high_b, low_b = divmod(b, 10 ** m)
+
+        if not processed:
+            stack.append((a, b, True))
+            stack.append((low_a, low_b, False))
+            stack.append((low_a + high_a, low_b + high_b, False))
+            stack.append((high_a, high_b, False))
+        else:
+            z0 = results[(low_a, low_b)]
+            z1 = results[(low_a + high_a, low_b + high_b)]
+            z2 = results[(high_a, high_b)]
+
+            results[(a, b)] = (
+                (z2 * 10 ** (2 * m)) +
+                ((z1 - z2 - z0) * 10 ** m) +
+                z0
+            )
+
+    return results[(x, y)]
+
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\karatsuba.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\sorts.py
+--------------------------------------------------
+# algoritmos/sorts.py
+import time
+from typing import List, Tuple
+
+def _time_it(func):
+    def wrapper(arr: List[int], *args, **kwargs) -> Tuple[List[int], float]:
+        start = time.perf_counter()
+        result = func(arr, *args, **kwargs)
+        end = time.perf_counter()
+        elapsed_ms = (end - start) * 1000.0
+        return result, elapsed_ms
+    return wrapper
+
+
+def _ensure_copy(arr: List[int]) -> List[int]:
+    return list(arr)
+
+@_time_it
+def bubble_improved(arr: List[int]) -> List[int]:
+    v = _ensure_copy(arr)
+    n = len(v)
+    for i in range(n):
+        swapped = False
+        # limitar el recorrido a n-i-1
+        for j in range(0, n - i - 1):
+            if v[j] > v[j + 1]:
+                v[j], v[j + 1] = v[j + 1], v[j]
+                swapped = True
+        if not swapped:
+            break
+    return v
+
+@_time_it
+def insertion_sort(arr: List[int]) -> List[int]:
+    v = _ensure_copy(arr)
+    for i in range(1, len(v)):
+        key = v[i]
+        j = i - 1
+        while j >= 0 and v[j] > key:
+            v[j + 1] = v[j]
+            j -= 1
+        v[j + 1] = key
+    return v
+
+@_time_it
+def selection_sort(arr: List[int]) -> List[int]:
+    v = _ensure_copy(arr)
+    n = len(v)
+    for i in range(n - 1):
+        min_idx = i
+        for j in range(i + 1, n):
+            if v[j] < v[min_idx]:
+                min_idx = j
+        if min_idx != i:
+            v[i], v[min_idx] = v[min_idx], v[i]
+    return v
+
+@_time_it
+def shell_sort(arr: List[int]) -> List[int]:
+    v = _ensure_copy(arr)
+    n = len(v)
+    gap = n // 2
+    while gap > 0:
+        for i in range(gap, n):
+            temp = v[i]
+            j = i
+            while j >= gap and v[j - gap] > temp:
+                v[j] = v[j - gap]
+                j -= gap
+            v[j] = temp
+        gap //= 2
+    return v
+
+# Quicksort recursivo (cuidado con recursionlimit en tamaños muy grandes)
+def _quick_rec(v, low, high):
+    if low < high:
+        pivot = v[high]
+        i = low - 1
+        for j in range(low, high):
+            if v[j] <= pivot:
+                i += 1
+                v[i], v[j] = v[j], v[i]
+        v[i + 1], v[high] = v[high], v[i + 1]
+        p = i + 1
+        _quick_rec(v, low, p - 1)
+        _quick_rec(v, p + 1, high)
+
+@_time_it
+def quicksort_recursive(arr: List[int]) -> List[int]:
+    v = _ensure_copy(arr)
+    if len(v) <= 1:
+        return v
+    _quick_rec(v, 0, len(v) - 1)
+    return v
+
+# Merge sort recursivo
+def _merge(left, right):
+    i = j = 0
+    out = []
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            out.append(left[i]); i += 1
+        else:
+            out.append(right[j]); j += 1
+    out.extend(left[i:])
+    out.extend(right[j:])
+    return out
+
+def _merge_rec(v):
+    if len(v) <= 1:
+        return v
+    mid = len(v) // 2
+    left = _merge_rec(v[:mid])
+    right = _merge_rec(v[mid:])
+    return _merge(left, right)
+
+@_time_it
+def mergesort_recursive(arr: List[int]) -> List[int]:
+    v = _ensure_copy(arr)
+    return _merge_rec(v)
+
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\sorts.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\stats_manager.py
+--------------------------------------------------
+# algoritmos/stats_manager.py
+import csv
+from typing import List, Dict
+
+class StatsManager:
+    def __init__(self):
+        self.records: List[Dict] = []  # lista de dicts: {'alg': 'quicksort', 'n': 1000, 'ms': 12.3, 'timestamp': ...}
+
+    def add(self, alg: str, n: int, ms: float):
+        self.records.append({
+            'alg': alg,
+            'n': n,
+            'ms': ms
+        })
+
+    def to_list(self):
+        return list(self.records)
+
+    def export_csv(self, path: str):
+        if not self.records:
+            return
+        keys = self.records[0].keys()
+        with open(path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=keys)
+            writer.writeheader()
+            writer.writerows(self.records)
+
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\stats_manager.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\__init__.py
+--------------------------------------------------
+
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\algoritmos\__init__.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\input.py
+--------------------------------------------------
+import tkinter as tk
+from tkinter import messagebox
+from algoritmos.data_manager import DataManager
+
+class InputOptionsScreen(tk.Toplevel):
+    def __init__(self, master, data_manager: DataManager, next_callback, on_back_callback):
+        super().__init__(master)
+
+        self.dm = data_manager
+        self.next_callback = next_callback
+        self.on_back = on_back_callback
+        
+        # Variable para controlar el modo (Manual vs Aleatorio)
+        self.input_mode = tk.StringVar(value="manual")
+
+        self.title("Ingreso de Datos")
+        self.geometry("600x500")
+        self.configure(bg="#f6f1e7")
+        self.resizable(False, False)
+
+        self._center()
+        self.create_widgets()
+        
+        # Inicializar estado de los campos (uno activo, otro inactivo)
+        self._toggle_inputs()
+
+    def _center(self):
+        x = (self.winfo_screenwidth() - 600) // 2
+        y = (self.winfo_screenheight() - 500) // 2
+        self.geometry(f"600x500+{x}+{y}")
+
+    def create_widgets(self):
+        tk.Label(
+            self,
+            text="INGRESO DE DATOS",
+            font=("Helvetica", 18, "bold"),
+            bg="#f6f1e7"
+        ).pack(pady=20)
+
+        # --- SELECCIÓN DE MODO (Radiobuttons) ---
+        mode_frame = tk.Frame(self, bg="#f6f1e7")
+        mode_frame.pack(pady=10)
+        
+        # Botón redondo para Manual
+        rb1 = tk.Radiobutton(
+            mode_frame, 
+            text="Ingreso Manual", 
+            variable=self.input_mode, 
+            value="manual", 
+            bg="#f6f1e7", 
+            command=self._toggle_inputs,
+            font=("Helvetica", 10)
+        )
+        rb1.pack(side="left", padx=20)
+        
+        # Botón redondo para Aleatorio
+        rb2 = tk.Radiobutton(
+            mode_frame, 
+            text="Generación Aleatoria", 
+            variable=self.input_mode, 
+            value="random", 
+            bg="#f6f1e7", 
+            command=self._toggle_inputs,
+            font=("Helvetica", 10)
+        )
+        rb2.pack(side="left", padx=20)
+
+        # --- ÁREA MANUAL ---
+        self.manual_frame = tk.LabelFrame(
+            self, 
+            text="Datos Manuales", 
+            bg="#e4efd9", 
+            fg="#2e3d2f"
+        )
+        self.manual_frame.pack(fill="x", padx=20, pady=10)
+
+        tk.Label(
+            self.manual_frame, 
+            text="Ingrese números enteros separados por coma:", 
+            bg="#e4efd9"
+        ).pack(pady=(10, 5))
+        
+        self.manual_entry = tk.Entry(self.manual_frame, width=50)
+        self.manual_entry.pack(pady=(0, 15), padx=10)
+
+        # --- ÁREA ALEATORIA ---
+        self.random_frame = tk.LabelFrame(
+            self, 
+            text="Configuración Aleatoria", 
+            bg="#e4efd9", 
+            fg="#2e3d2f"
+        )
+        self.random_frame.pack(fill="x", padx=20, pady=10)
+
+        tk.Label(
+            self.random_frame, 
+            text="Cantidad de números a generar:", 
+            bg="#e4efd9"
+        ).pack(side="left", padx=20, pady=20)
+        
+        self.random_entry = tk.Entry(self.random_frame, width=15)
+        self.random_entry.pack(side="left", padx=10)
+
+        # --- BOTONES DE ACCIÓN ---
+        btn_frame = tk.Frame(self, bg="#f6f1e7")
+        btn_frame.pack(pady=20)
+
+        # Botón único para procesar según la selección
+        tk.Button(
+            btn_frame,
+            text="Cargar Datos y Continuar",
+            bg="#333",
+            fg="white",
+            font=("Helvetica", 10, "bold"),
+            command=self._process_data
+        ).pack(side="left", padx=10, ipadx=10, ipady=5)
+
+        # Botón Volver
+        tk.Button(
+            btn_frame,
+            text="⬅ Volver",
+            bg="#d9534f",
+            fg="white",
+            font=("Helvetica", 10, "bold"),
+            command=self._go_back
+        ).pack(side="left", padx=10, ipadx=10, ipady=5)
+
+    def _toggle_inputs(self):
+        """Habilita o deshabilita los campos según el radiobutton seleccionado"""
+        mode = self.input_mode.get()
+        
+        if mode == "manual":
+            # Habilitar manual
+            for child in self.manual_frame.winfo_children():
+                child.configure(state="normal")
+            # Deshabilitar aleatorio
+            for child in self.random_frame.winfo_children():
+                child.configure(state="disabled")
+        else:
+            # Deshabilitar manual
+            for child in self.manual_frame.winfo_children():
+                child.configure(state="disabled")
+            # Habilitar aleatorio
+            for child in self.random_frame.winfo_children():
+                child.configure(state="normal")
+
+    def _process_data(self):
+        """Lee los datos según el modo activo y avanza"""
+        mode = self.input_mode.get()
+        
+        try:
+            if mode == "manual":
+                val = self.manual_entry.get()
+                if not val.strip():
+                    raise ValueError("El campo manual está vacío.")
+                self.dm.set_data_manual(val)
+                messagebox.showinfo("OK", "Datos manuales cargados correctamente")
+                
+            else: # Random
+                val = self.random_entry.get()
+                if not val.strip():
+                    raise ValueError("Ingrese la cantidad de números.")
+                count = int(val)
+                self.dm.set_data_random(count)
+                messagebox.showinfo("OK", f"Se generaron {count} números aleatorios correctamente")
+            
+            # Si todo sale bien, avanzamos
+            self._next()
+            
+        except ValueError as e:
+            # Captura errores de conversión o validación del DataManager
+            messagebox.showerror("Error de Datos", str(e))
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un error inesperado: {str(e)}")
+
+    def _next(self):
+        self.destroy()
+        self.next_callback()
+
+    def _go_back(self):
+        self.destroy()
+        self.on_back()
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\input.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\karatsuba_screens.py
+--------------------------------------------------
+import tkinter as tk
+from tkinter import ttk, messagebox
+import random
+
+# Importaciones matplotlib
+try:
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+
+from algoritmos.karatsuba import karatsuba_recursive, karatsuba_iterative
+
+class KaratsubaInputScreen(tk.Toplevel):
+    def __init__(self, master, data_manager, on_back_callback):
+        super().__init__(master)
+        self.dm = data_manager
+        self.on_back = on_back_callback # Callback para volver
+        
+        self.title("Configuración Karatsuba")
+        self.geometry("600x500")
+        self.configure(bg="#f6f1e7")
+        self.resizable(False, False)
+        
+        self.input_mode = tk.StringVar(value="manual")
+        
+        self._center()
+        self._create_widgets()
+        self._toggle_inputs()
+
+    def _center(self):
+        x = (self.winfo_screenwidth() - 600) // 2
+        y = (self.winfo_screenheight() - 500) // 2
+        self.geometry(f"600x500+{x}+{y}")
+
+    def _create_widgets(self):
+        tk.Label(self, text="Entrada de Datos para Karatsuba", font=("Helvetica", 14, "bold"), bg="#f6f1e7").pack(pady=20)
+
+        # Modos
+        mode_frame = tk.Frame(self, bg="#f6f1e7")
+        mode_frame.pack(pady=10)
+        tk.Radiobutton(mode_frame, text="Ingreso Manual", variable=self.input_mode, value="manual", bg="#f6f1e7", command=self._toggle_inputs).pack(side="left", padx=20)
+        tk.Radiobutton(mode_frame, text="Generación Aleatoria", variable=self.input_mode, value="random", bg="#f6f1e7", command=self._toggle_inputs).pack(side="left", padx=20)
+
+        # Manual Frame
+        self.manual_frame = tk.LabelFrame(self, text="Datos Manuales", bg="#e4efd9", fg="#2e3d2f")
+        self.manual_frame.pack(fill="x", padx=20, pady=10)
+        tk.Label(self.manual_frame, text="Número 1:", bg="#e4efd9").grid(row=0, column=0, padx=10, pady=10)
+        self.entry_num1 = tk.Entry(self.manual_frame, width=30)
+        self.entry_num1.grid(row=0, column=1, padx=10, pady=10)
+        tk.Label(self.manual_frame, text="Número 2:", bg="#e4efd9").grid(row=1, column=0, padx=10, pady=10)
+        self.entry_num2 = tk.Entry(self.manual_frame, width=30)
+        self.entry_num2.grid(row=1, column=1, padx=10, pady=10)
+
+        # Random Frame
+        self.random_frame = tk.LabelFrame(self, text="Configuración Aleatoria", bg="#e4efd9", fg="#2e3d2f")
+        self.random_frame.pack(fill="x", padx=20, pady=10)
+        tk.Label(self.random_frame, text="Cifras:", bg="#e4efd9").pack(side="left", padx=10, pady=20)
+        self.entry_digits = tk.Entry(self.random_frame, width=10)
+        self.entry_digits.pack(side="left", padx=10)
+
+        # Botones Acción
+        btn_box = tk.Frame(self, bg="#f6f1e7")
+        btn_box.pack(pady=20)
+
+        tk.Button(btn_box, text="Cargar y Continuar", bg="#333", fg="white", font=("Helvetica", 10, "bold"),
+                  command=self._on_continue).pack(side="left", padx=10, ipadx=10, ipady=5)
+        
+        tk.Button(btn_box, text="Volver", bg="#d9534f", fg="white", font=("Helvetica", 10, "bold"),
+                  command=self._go_back).pack(side="left", padx=10, ipadx=10, ipady=5)
+
+    def _toggle_inputs(self):
+        mode = self.input_mode.get()
+        if mode == "manual":
+            for child in self.manual_frame.winfo_children(): child.configure(state="normal")
+            for child in self.random_frame.winfo_children(): child.configure(state="disabled")
+        else:
+            for child in self.manual_frame.winfo_children(): child.configure(state="disabled")
+            for child in self.random_frame.winfo_children(): child.configure(state="normal")
+
+    def _on_continue(self):
+        try:
+            num1, num2 = self._get_numbers()
+            # Pasamos la referencia de esta ventana para poder volver a ella
+            KaratsubaExecutionScreen(self.master, num1, num2, on_back_callback=self._restore_self)
+            self.withdraw() # Ocultamos esta ventana en lugar de destruirla
+        except ValueError:
+            messagebox.showerror("Error", "Datos inválidos.")
+
+    def _get_numbers(self):
+        mode = self.input_mode.get()
+        if mode == "manual":
+            v1, v2 = self.entry_num1.get().strip(), self.entry_num2.get().strip()
+            if not v1 or not v2: raise ValueError
+            return int(v1), int(v2)
+        else:
+            d = int(self.entry_digits.get())
+            if d <= 0: raise ValueError
+            s, e = 10**(d-1), (10**d)-1
+            return random.randint(s, e), random.randint(s, e)
+
+    def _go_back(self):
+        self.destroy()
+        self.on_back()
+
+    def _restore_self(self):
+        self.deiconify() # Volver a mostrar esta ventana
+
+class KaratsubaExecutionScreen(tk.Toplevel):
+    def __init__(self, master, num1, num2, on_back_callback):
+        super().__init__(master)
+        self.num1 = num1
+        self.num2 = num2
+        self.on_back = on_back_callback
+        
+        self.result_rec = None
+        self.time_rec = None
+        self.result_iter = None
+        self.time_iter = None
+        
+        self.title("Ejecución Karatsuba")
+        self.geometry("900x750") 
+        self.configure(bg="#f6f1e7")
+        self.resizable(False, False)
+        self._center()
+        self._create_widgets()
+
+    def _center(self):
+        x = (self.winfo_screenwidth() - 900) // 2
+        y = (self.winfo_screenheight() - 750) // 2
+        self.geometry(f"900x750+{x}+{y}")
+
+    def _create_widgets(self):
+        # 1. Info Superior
+        top_frame = tk.Frame(self, bg="#f6f1e7")
+        top_frame.pack(fill="x", padx=20, pady=(10, 5))
+        
+        n1s, n2s = str(self.num1), str(self.num2)
+        dn1 = (n1s[:40] + '...') if len(n1s) > 40 else n1s
+        dn2 = (n2s[:40] + '...') if len(n2s) > 40 else n2s
+
+        tk.Label(top_frame, text=f"Número A: {dn1}", bg="#e4efd9", anchor="w").pack(fill="x", pady=2)
+        tk.Label(top_frame, text=f"Número B: {dn2}", bg="#e4efd9", anchor="w").pack(fill="x", pady=2)
+
+        # 2. Consola de Resultados
+        result_frame = tk.LabelFrame(self, text="Consola de Resultados", bg="#f6f1e7")
+        result_frame.pack(fill="x", padx=20, pady=5)
+        self.output_text = tk.Text(result_frame, height=10, state="disabled", font=("Consolas", 9))
+        self.output_text.pack(fill="both", padx=10, pady=5)
+
+        # 3. Controles
+        control_frame = tk.Frame(self, bg="#f6f1e7")
+        control_frame.pack(fill="x", padx=20, pady=10)
+        
+        # Botones Ejecución
+        btn_frame = tk.Frame(control_frame, bg="#f6f1e7")
+        btn_frame.pack(side="left")
+        tk.Button(btn_frame, text="Ejecutar Recursivo", bg="#ddd", command=self._run_recursive).pack(fill="x", pady=2)
+        tk.Button(btn_frame, text="Ejecutar Iterativo", bg="#ddd", command=self._run_iterative).pack(fill="x", pady=2)
+        
+        # Tiempos Display
+        time_frame = tk.Frame(control_frame, bg="#f6f1e7")
+        time_frame.pack(side="left", padx=20)
+        tk.Label(time_frame, text="T. Recursivo:", bg="#f6f1e7").grid(row=0, column=0)
+        self.lbl_rec = tk.Label(time_frame, text="-- ms", bg="white", width=12, relief="sunken")
+        self.lbl_rec.grid(row=0, column=1)
+        tk.Label(time_frame, text="T. Iterativo:", bg="#f6f1e7").grid(row=1, column=0)
+        self.lbl_iter = tk.Label(time_frame, text="-- ms", bg="white", width=12, relief="sunken")
+        self.lbl_iter.grid(row=1, column=1)
+
+        # Botón Gráfico y Volver
+        right_frame = tk.Frame(control_frame, bg="#f6f1e7")
+        right_frame.pack(side="right")
+        
+        self.btn_graph = tk.Button(right_frame, text="📉 Ver Gráfico", state="disabled", bg="#2e3d2f", fg="white", command=self._embed_graph)
+        self.btn_graph.pack(side="top", fill="x", pady=2)
+        
+        tk.Button(right_frame, text="Volver", bg="#d9534f", fg="white", command=self._go_back).pack(side="top", fill="x", pady=2)
+
+        # 4. Gráfico Frame
+        self.graph_frame = tk.LabelFrame(self, text="Comparativa Visual", bg="#f6f1e7")
+        self.graph_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        self.lbl_placeholder = tk.Label(self.graph_frame, text="Ejecute ambos algoritmos para ver el gráfico.", bg="#f6f1e7", fg="gray")
+        self.lbl_placeholder.pack(expand=True)
+
+    def _log(self, msg):
+        self.output_text.config(state="normal")
+        self.output_text.insert(tk.END, msg + "\n")
+        self.output_text.see(tk.END)
+        self.output_text.config(state="disabled")
+
+    def _run_recursive(self):
+        self._log(">>> Calculando Recursivo...")
+        self.update()
+        try:
+            res, ms = karatsuba_recursive(self.num1, self.num2)
+            self.result_rec = res
+            self.time_rec = ms
+            self.lbl_rec.config(text=f"{ms:.4f} ms")
+            
+            # MOSTRAR RESULTADO COMPLETO
+            self._log(f"   [ÉXITO] Tiempo: {ms:.4f} ms")
+            self._log(f"   RESULTADO: {res}")
+            self._log("-" * 40)
+            
+            self._check_graph_enable()
+        except RecursionError:
+            self._log("   [ERROR] Stack Overflow.")
+            self.time_rec = -1
+
+    def _run_iterative(self):
+        self._log(">>> Calculando Iterativo...")
+        self.update()
+        try:
+            res, ms = karatsuba_iterative(self.num1, self.num2)
+            self.result_iter = res
+            self.time_iter = ms
+            self.lbl_iter.config(text=f"{ms:.4f} ms")
+            
+            # MOSTRAR RESULTADO COMPLETO
+            self._log(f"   [ÉXITO] Tiempo: {ms:.4f} ms")
+            self._log(f"   RESULTADO: {res}")
+            self._log("-" * 40)
+            
+            self._check_graph_enable()
+        except Exception as e:
+            self._log(f"   [ERROR] {str(e)}")
+
+    def _check_graph_enable(self):
+        if self.time_rec is not None and self.time_iter is not None and self.time_rec != -1:
+            self.btn_graph.config(state="normal")
+
+    def _embed_graph(self):
+        if not MATPLOTLIB_AVAILABLE:
+            messagebox.showerror("Error", "Matplotlib no instalado.")
+            return
+        
+        for w in self.graph_frame.winfo_children(): w.destroy()
+        
+        fig = Figure(figsize=(5, 3), dpi=100)
+        fig.patch.set_facecolor('#f6f1e7')
+        ax = fig.add_subplot(111)
+        ax.set_facecolor('#f6f1e7')
+        
+        bars = ax.bar(['Recursivo', 'Iterativo'], [self.time_rec, self.time_iter], color=['#ff9999', '#66b3ff'], width=0.5)
+        ax.set_title('Tiempo de Ejecución (ms)')
+        
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(bar.get_x()+bar.get_width()/2., h, f'{h:.4f}', ha='center', va='bottom')
+
+        canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def _go_back(self):
+        self.destroy()
+        self.on_back()
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\karatsuba_screens.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\menus.py
+--------------------------------------------------
+import tkinter as tk
+from tkinter import messagebox
+
+class MainSelectionScreen(tk.Toplevel):
+    def __init__(self, master, on_sorting_callback, on_divide_callback, on_back_callback):
+        super().__init__(master)
+        self.on_sorting = on_sorting_callback
+        self.on_divide = on_divide_callback
+        self.on_back = on_back_callback # Callback para volver
+        
+        self.title("Selección de Categoría")
+        self.geometry("600x450") # Un poco más alto para el botón volver
+        self.configure(bg="#f6f1e7")
+        self.resizable(False, False)
+        self._center()
+        self._create_widgets()
+
+    def _center(self):
+        x = (self.winfo_screenwidth() - 600) // 2
+        y = (self.winfo_screenheight() - 450) // 2
+        self.geometry(f"600x450+{x}+{y}")
+
+    def _create_widgets(self):
+        tk.Label(self, text="Seleccione una Categoría", font=("Helvetica", 16, "bold"), bg="#f6f1e7").pack(pady=30)
+
+        # Opciones Principales
+        tk.Button(
+            self, text="Algoritmos de Busqueda\n(Secuencial, Binaria)", 
+            font=("Helvetica", 11), bg="#e4efd9", width=35, height=3,
+            command=self._go_sorting
+        ).pack(pady=10)
+
+        tk.Button(
+            self, text="Algoritmos Divide y Vencerás\n(Karatsuba, Strassen...)", 
+            font=("Helvetica", 11), bg="#e4efd9", width=35, height=3,
+            command=self._go_divide
+        ).pack(pady=10)
+
+        # Botón Volver
+        tk.Frame(self, bg="#f6f1e7").pack(pady=10) # Espaciador
+        tk.Button(
+            self, text="⬅ Volver al Inicio", 
+            bg="#d9534f", fg="white", font=("Helvetica", 10, "bold"),
+            command=self._go_back
+        ).pack(pady=10, ipadx=10)
+
+    def _go_sorting(self):
+        self.destroy()
+        self.on_sorting()
+
+    def _go_divide(self):
+        self.destroy()
+        self.on_divide()
+
+    def _go_back(self):
+        self.destroy()
+        self.on_back()
+
+
+class DivideMenuScreen(tk.Toplevel):
+    def __init__(self, master, on_karatsuba_callback,on_strassen_callback,on_back_callback):
+        super().__init__(master)
+        self.on_karatsuba = on_karatsuba_callback
+        self.on_strassen = on_strassen_callback
+        self.on_back = on_back_callback
+        
+        self.title("Algoritmos de tipo Divide y Vencerás")
+        self.geometry("500x450")
+        self.configure(bg="#f6f1e7")
+        self.resizable(False, False)
+        self._center()
+        self._create_widgets()
+
+    def _center(self):
+        x = (self.winfo_screenwidth() - 500) // 2
+        y = (self.winfo_screenheight() - 450) // 2
+        self.geometry(f"500x450+{x}+{y}")
+
+    def _create_widgets(self):
+        tk.Label(self, text="Algoritmos de tipo Divide y Vencerás", font=("Helvetica", 14, "bold"), bg="#f6f1e7").pack(pady=30)
+
+        # Opciones
+        tk.Button(
+            self, text="Multiplicación de Karatsuba", 
+            font=("Helvetica", 10), bg="#e4efd9", width=30, height=2,
+            command=self._go_karatsuba
+        ).pack(pady=10)
+
+        tk.Button(
+            self, text="Matricial de Strassen", 
+            font=("Helvetica", 10), bg="#e4efd9", width=30, height=2,
+            command=self._go_strassen
+        ).pack(pady=10)
+
+        tk.Button(
+            self, text="Generación de PI (10000 cifras)", 
+            font=("Helvetica", 10), bg="#e4efd9", width=30, height=2,
+            command=lambda: messagebox.showinfo("Info", "Algoritmo en construcción.")
+        ).pack(pady=10)
+
+        # Botón Volver
+        tk.Button(
+            self, text="⬅ Volver", 
+            bg="#d9534f", fg="white", font=("Helvetica", 10, "bold"),
+            command=self._go_back
+        ).pack(pady=20, ipadx=10)
+
+    def _go_karatsuba(self):
+        self.destroy()
+        self.on_karatsuba()
+
+    def _go_strassen(self):
+        self.destroy()
+        self.on_strassen()
+
+    def _go_back(self):
+        self.destroy()
+        self.on_back()
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\menus.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\order_choice.py
+--------------------------------------------------
+import tkinter as tk
+from algoritmos.data_manager import DataManager
+
+class OrderChoiceScreen(tk.Toplevel):
+    def __init__(self, master, data_manager: DataManager, next_callback, on_back_callback):
+        super().__init__(master)
+
+        self.dm = data_manager
+        self.next_callback = next_callback
+        self.on_back = on_back_callback
+
+        self.title("Orden de Datos")
+        self.geometry("500x350")
+        self.configure(bg="#f6f1e7")
+        self.resizable(False, False)
+
+        self._center()
+        self.create_widgets()
+
+    def _center(self):
+        x = (self.winfo_screenwidth() - 500) // 2
+        y = (self.winfo_screenheight() - 350) // 2
+        self.geometry(f"500x350+{x}+{y}")
+
+    def create_widgets(self):
+        tk.Label(
+            self,
+            text="Seleccione el estado de los datos",
+            font=("Helvetica", 14, "bold"),
+            bg="#f6f1e7"
+        ).pack(pady=30)
+
+        # Botón para ORDENAR (Activa el Quicksort interno en el siguiente paso)
+        tk.Button(
+            self,
+            text="Datos Ordenados\n(Aplicar Quicksort)",
+            width=25,
+            bg="#e4efd9",
+            command=lambda: self._select("ordered")
+        ).pack(pady=10)
+
+        # Botón para DESORDENADO (Mantiene los datos como están)
+        tk.Button(
+            self,
+            text="Datos Desordenados\n(Mantener Original)",
+            width=25,
+            bg="#e4efd9",
+            command=lambda: self._select("unordered")
+        ).pack(pady=10)
+        
+        # Botón Volver
+        tk.Button(
+            self, 
+            text="⬅ Volver", 
+            bg="#d9534f", 
+            fg="white", 
+            command=self._go_back
+        ).pack(pady=20)
+
+    def _select(self, mode):
+        # Guardamos la preferencia. Main.py leerá esto para decidir si ordena o no.
+        self.dm.set_order_mode(mode)
+        self.destroy()
+        self.next_callback()
+
+    def _go_back(self):
+        self.destroy()
+        self.on_back()
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\order_choice.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\search_algorithms.py
+--------------------------------------------------
+import tkinter as tk
+from tkinter import ttk
+from algoritmos.data_manager import DataManager
+
+class SearchAlgorithmScreen(tk.Toplevel):
+    def __init__(self, master, data_manager: DataManager, on_back_callback=None):
+        super().__init__(master)
+
+        self.dm = data_manager
+        self.on_back = on_back_callback
+
+        self.title("Ejecución de Algoritmos")
+        self.geometry("800x600") # Un poco más alto para el botón volver
+        self.configure(bg="#f6f1e7")
+        self.resizable(False, False)
+
+        self.selected_algorithm = tk.StringVar()
+        self.show_graph = tk.BooleanVar(value=False)
+
+        self._center()
+        self.create_widgets()
+
+    def _center(self):
+        x = (self.winfo_screenwidth() - 800) // 2
+        y = (self.winfo_screenheight() - 600) // 2
+        self.geometry(f"800x600+{x}+{y}")
+
+    def create_widgets(self):
+        # -------- TÍTULO --------
+        tk.Label(
+            self,
+            text="ALGORITMOS - BÚSQUEDA / OTROS",
+            font=("Helvetica", 16, "bold"),
+            bg="#f6f1e7"
+        ).pack(pady=15)
+
+        main_frame = tk.Frame(self, bg="#f6f1e7")
+        main_frame.pack(fill="both", expand=True, padx=15)
+
+        # -------- PANEL IZQUIERDO --------
+        left_frame = tk.LabelFrame(
+            main_frame,
+            text="Selección de Algoritmo",
+            font=("Helvetica", 10, "bold"),
+            bg="#e4efd9",
+            fg="#2e3d2f",
+            bd=2
+        )
+        left_frame.pack(side="left", fill="y", padx=10, pady=10)
+
+        # Opciones originales restauradas
+        algorithms = [
+            "Búsqueda Iterativa",
+            "Búsqueda Recursiva",
+            "Karatsuba",
+            "Strassen",
+            "PI (10000 cifras)"
+        ]
+
+        for alg in algorithms:
+            ttk.Radiobutton(
+                left_frame,
+                text=alg,
+                value=alg,
+                variable=self.selected_algorithm
+            ).pack(anchor="w", padx=15, pady=5)
+
+        ttk.Checkbutton(
+            left_frame,
+            text="Mostrar gráfico",
+            variable=self.show_graph
+        ).pack(anchor="w", padx=15, pady=(10, 5))
+
+        ttk.Button(
+            left_frame,
+            text="Ejecutar",
+            command=self._execute_algorithm
+        ).pack(pady=15)
+        
+        # Botón Volver agregado
+        ttk.Button(
+            left_frame,
+            text="⬅ Volver",
+            command=self._go_back
+        ).pack(side="bottom", pady=20, fill="x", padx=15)
+
+        # -------- PANEL DERECHO --------
+        right_frame = tk.LabelFrame(
+            main_frame,
+            text="Resultados",
+            font=("Helvetica", 10, "bold"),
+            bg="#e4efd9",
+            fg="#2e3d2f",
+            bd=2
+        )
+        right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+        # ---- Tiempo ----
+        time_frame = tk.Frame(right_frame, bg="#e4efd9")
+        time_frame.pack(fill="x", pady=5)
+
+        tk.Label(
+            time_frame,
+            text="Tiempo de ejecución (ms):",
+            bg="#e4efd9",
+            font=("Helvetica", 9, "bold")
+        ).pack(side="left", padx=5)
+
+        self.time_entry = tk.Entry(time_frame, width=15, state="readonly")
+        self.time_entry.pack(side="left", padx=5)
+
+        # ---- Salida ----
+        tk.Label(
+            right_frame,
+            text="Salida / Resultado:",
+            bg="#e4efd9",
+            font=("Helvetica", 9, "bold")
+        ).pack(anchor="w", padx=5, pady=(10, 0))
+
+        self.output_text = tk.Text(
+            right_frame,
+            height=8,
+            state="disabled",
+            wrap="word"
+        )
+        self.output_text.pack(padx=10, pady=5, fill="x")
+
+        # ---- Área de gráfico ----
+        tk.Label(
+            right_frame,
+            text="Gráfico:",
+            bg="#e4efd9",
+            font=("Helvetica", 9, "bold")
+        ).pack(anchor="w", padx=5, pady=(10, 0))
+
+        self.graph_placeholder = tk.Label(
+            right_frame,
+            text="📊 El gráfico se mostrará aquí",
+            bg="#ffffff",
+            fg="gray",
+            relief="solid",
+            height=8
+        )
+        self.graph_placeholder.pack(fill="both", padx=10, pady=5, expand=True)
+
+    def _execute_algorithm(self):
+        alg = self.selected_algorithm.get()
+
+        if not alg:
+            self._write_output("⚠️ Seleccione un algoritmo antes de ejecutar.")
+            return
+
+        self._set_time("0.00")
+
+        result_text = (
+            f"Algoritmo seleccionado:\n{alg}\n\n"
+            "Resultados pendientes de implementación.\n"
+            "(Nota: Los datos ya fueron ordenados internamente con QuickSort)"
+        )
+
+        if self.show_graph.get():
+            result_text += "\n\n✔ Opción de gráfico activada."
+            self.graph_placeholder.config(
+                text="📈 Gráfico generado (placeholder)",
+                fg="#2e3d2f"
+            )
+        else:
+            self.graph_placeholder.config(
+                text="📊 El gráfico se mostrará aquí",
+                fg="gray"
+            )
+
+        self._write_output(result_text)
+
+    def _set_time(self, value: str):
+        self.time_entry.config(state="normal")
+        self.time_entry.delete(0, tk.END)
+        self.time_entry.insert(0, value)
+        self.time_entry.config(state="readonly")
+
+    def _write_output(self, text: str):
+        self.output_text.config(state="normal")
+        self.output_text.delete("1.0", tk.END)
+        self.output_text.insert(tk.END, text)
+        self.output_text.config(state="disabled")
+        
+    def _go_back(self):
+        self.destroy()
+        if self.on_back:
+            self.on_back()
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\search_algorithms.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\sorters.py
+--------------------------------------------------
+import tkinter as tk
+from tkinter import ttk, messagebox
+import threading
+import queue
+# import matplotlib.pyplot as plt
+# from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from algoritmos.data_manager import DataManager
+from algoritmos.stats_manager import StatsManager
+import algoritmos.sorts as sorts
+
+
+# helper para mostrar muestras
+def format_array_for_display(arr, head=10, tail=10):
+    n = len(arr)
+    if n <= head + tail + 2:
+        return str(arr)
+    head_part = arr[:head]
+    tail_part = arr[-tail:]
+    return f"{head_part} ... {tail_part}  (total: {n})"
+
+
+class SortersScreen(tk.Toplevel):
+    # Adaptación: Agregamos on_back_callback para que funcione con tu nuevo menú
+    def __init__(self, master=None, data_manager: DataManager=None, on_back_callback=None):
+        super().__init__(master)
+        self.title("Ordenamientos")
+        
+        self.WIDTH = 900
+        self.HEIGHT= 700
+        self.configure(bg="#0b0b0b")
+        self.resizable(True, True)
+        
+        self.master_window = master
+        self.on_back = on_back_callback  # Guardamos el callback de retorno
+        
+        self.dm = data_manager if data_manager else DataManager()
+        self.stats = StatsManager()
+
+        self.result_queue = queue.Queue()
+        
+        # Si cerramos la ventana con la X, intentamos usar el flujo de retorno
+        self.protocol("WM_DELETE_WINDOW", self._go_back) 
+            
+        self._create_widgets()
+        self._center_window()
+        
+    def _center_window(self):
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width // 2) - (self.WIDTH // 2)
+        y = (screen_height // 2) - (self.HEIGHT // 2)
+        self.geometry(f'{self.WIDTH}x{self.HEIGHT}+{x}+{y}')
+
+    def _create_widgets(self):
+        top_frame = tk.Frame(self, bg="#0b0b0b")
+        top_frame.pack(fill="x", padx=12, pady=10)
+
+        left = tk.Frame(top_frame, bg="#0b0b0b")
+        left.pack(side="left", fill="both", expand=True)
+
+        right = tk.Frame(top_frame, bg="#0b0b0b")
+        right.pack(side="right", fill="y")
+
+        # Algoritmos disponibles (RESTAURADOS TODOS)
+        tk.Label(right, text="Seleccione un Algoritmo", bg="#333333", fg="white").pack(pady=(0,5))
+        
+        self.alg_var = tk.StringVar(value="quicksort_recursive")
+        algs = [
+            ("Bubble (mejorado)", "bubble_improved"),
+            ("Insertion", "insertion_sort"),
+            ("Selection", "selection_sort"),
+            ("Shell", "shell_sort"),
+            ("Quicksort (rec)", "quicksort_recursive"),
+            ("Mergesort (rec)", "mergesort_recursive"),
+        ]
+        for text, val in algs:
+            tk.Radiobutton(right, text=text, variable=self.alg_var, value=val, bg="black", fg="white", selectcolor="black").pack(anchor="w", padx=4, pady=2)
+
+        ttk.Button(right, text="Ejecutar", command=self._on_run).pack(pady=8, fill="x", padx=6)
+        # BOTON PARA MOSTRAR GRAFICO MATPLOT (Comentado original)
+        # ttk.Button(right, text="Mostrar gráfico", command=self._show_time_graph).pack(pady=4, fill="x", padx=6)
+        ttk.Button(right, text="Exportar estadísticas", command=self._export_stats).pack(pady=4, fill="x", padx=6)
+        
+        # Botón Regresar (Restaurado)
+        ttk.Button(right, text="Regresar", command=self._go_back).pack(pady=4, fill="x", padx=6)
+
+        # Muestras de arreglo
+        info_frame = tk.Frame(left, bg="#0b0b0b")
+        info_frame.pack(fill="both", expand=False, pady=4)
+
+        tk.Label(info_frame, text="Arreglo original (muestra):", bg="#0b0b0b", fg="white").grid(row=0, column=0, sticky="w")
+        self.orig_text = tk.Text(info_frame, height=3, width=80, bg="#111", fg="white", wrap="none")
+        self.orig_text.grid(row=1, column=0, padx=4, pady=2)
+
+        tk.Label(info_frame, text="Arreglo ordenado (muestra):", bg="#0b0b0b", fg="white").grid(row=2, column=0, sticky="w")
+        self.sorted_text = tk.Text(info_frame, height=3, width=80, bg="#111", fg="white", wrap="none")
+        self.sorted_text.grid(row=3, column=0, padx=4, pady=2)
+
+        self.time_label = tk.Label(info_frame, text="Tiempo: -- ms", bg="#0b0b0b", fg="white", font=("Helvetica", 12, "bold"))
+        self.time_label.grid(row=4, column=0, sticky="w", pady=(6,0))
+        
+        # Tabla comparativa
+        table_frame = tk.Frame(self, bg="#0b0b0b")
+        table_frame.pack(fill="both", expand=True, padx=12, pady=6)
+        style = ttk.Style()
+        style.theme_use("default")
+
+        # Fondo de la tabla
+        style.configure("Treeview",
+            background="#333232",
+            fieldbackground="#0b0b0b",
+            foreground="white",
+            borderwidth=0)
+
+        # Color de la fila seleccionada
+        style.map("Treeview",
+          background=[("selected", "#333333")],
+          foreground=[("selected", "white")])
+
+        # Encabezados
+        style.configure("Treeview.Heading",
+                background="#1a1a1a",
+                foreground="white",
+                font=("Helvetica", 10, "bold"))
+        
+        self.tree = ttk.Treeview(table_frame, columns=("alg", "n", "ms"), show="headings", height=6)
+        self.tree.heading("alg", text="Algoritmo")
+        self.tree.heading("n", text="n")
+        self.tree.heading("ms", text="ms")
+        self.tree.pack(side="left", fill="both", expand=True)
+
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscroll=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+    def _on_run(self):
+        arr = self.dm.get_data_copy()
+        if not arr:
+            messagebox.showerror("Error", "No hay datos cargados.")
+            return
+
+        alg_key = self.alg_var.get()
+
+        # Advertencia para arreglos grandes (Lógica Original)
+        n = len(arr)
+        if n > 100000 and alg_key in ("quicksort_recursive", "mergesort_recursive", "insertion_sort", "selection_sort", "bubble_improved"):
+            msg = (
+                f"El algoritmo seleccionado puede ser muy lento o agotar recursión con n = {n}.\n"
+                f"¿Deseas continuar?"
+            )
+            if not messagebox.askyesno("Advertencia", msg):
+                return
+
+        thread = threading.Thread(target=self._run_sort_in_thread, args=(alg_key, arr), daemon=True)
+        thread.start()
+
+        self.time_label.config(text="Ejecutando...")
+
+        self.after(100, self._check_result_queue)
+
+    def _run_sort_in_thread(self, alg_key, arr):
+        try:
+            func = getattr(sorts, alg_key)
+            sorted_arr, elapsed = func(arr)
+
+            self.result_queue.put({
+                'alg': alg_key,
+                'n': len(arr),
+                'ms': elapsed,
+                'sorted': sorted_arr
+            })
+
+        except Exception as e:
+            self.result_queue.put({'error': str(e)})
+
+    def _check_result_queue(self):
+        try:
+            item = self.result_queue.get_nowait()
+        except queue.Empty:
+            self.after(100, self._check_result_queue)
+            return
+
+        if 'error' in item:
+            messagebox.showerror("Error en ordenamiento", item['error'])
+            self.time_label.config(text="Error")
+            return
+
+        alg = item['alg']
+        n = item['n']
+        ms = item['ms']
+        sorted_arr = item['sorted']
+
+        self.stats.add(alg, n, ms)
+
+        self.orig_text.delete("1.0", "end")
+        self.orig_text.insert("end", format_array_for_display(self.dm.base_data))
+
+        self.sorted_text.delete("1.0", "end")
+        self.sorted_text.insert("end", format_array_for_display(sorted_arr))
+
+        self.time_label.config(text=f"Tiempo: {ms:.3f} ms  | Alg: {alg}  |  n: {n}")
+        
+        self.tree.insert("", "end", values=(alg, n, f"{ms:.3f}"))
+        
+    def _export_stats(self):
+        from tkinter import filedialog
+        path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")])
+        if not path:
+            return
+        try:
+            self.stats.export_csv(path)
+            messagebox.showinfo("Exportado", f"Estadísticas exportadas a {path}")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    def _go_back(self):
+        self.destroy()
+        # Adaptación: Si tenemos un callback (del nuevo menú), lo usamos.
+        if self.on_back:
+            self.on_back()
+        # Si no, intentamos el método antiguo (por seguridad)
+        elif self.master_window and hasattr(self.master_window, 'deiconify'):
+            self.master_window.deiconify()
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\sorters.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\Strassen.py
+--------------------------------------------------
+import tkinter as tk
+from tkinter import ttk, messagebox
+import numpy as np
+import time
+import matplotlib.pyplot as plt
+
+# ===============================
+# STRASSEN RECURSIVO
+# ===============================
+def strassen_rec(A, B):
+    n = A.shape[0]
+    if n == 1:
+        return A * B
+
+    mid = n // 2
+    A11, A12 = A[:mid, :mid], A[:mid, mid:]
+    A21, A22 = A[mid:, :mid], A[mid:, mid:]
+    B11, B12 = B[:mid, :mid], B[:mid, mid:]
+    B21, B22 = B[mid:, :mid], B[mid:, mid:]
+
+    M1 = strassen_rec(A11 + A22, B11 + B22)
+    M2 = strassen_rec(A21 + A22, B11)
+    M3 = strassen_rec(A11, B12 - B22)
+    M4 = strassen_rec(A22, B21 - B11)
+    M5 = strassen_rec(A11 + A12, B22)
+    M6 = strassen_rec(A21 - A11, B11 + B12)
+    M7 = strassen_rec(A12 - A22, B21 + B22)
+
+    C11 = M1 + M4 - M5 + M7
+    C12 = M3 + M5
+    C21 = M2 + M4
+    C22 = M1 - M2 + M3 + M6
+
+    return np.vstack((np.hstack((C11, C12)),
+                      np.hstack((C21, C22))))
+
+
+# ===============================
+# STRASSEN ITERATIVO (SIMULADO)
+# ===============================
+def strassen_iter(A, B):
+    stack = [(A, B, False)]
+    results = []
+
+    while stack:
+        A, B, combine = stack.pop()
+        n = A.shape[0]
+
+        if n == 1:
+            results.append(A * B)
+            continue
+
+        mid = n // 2
+        A11, A12 = A[:mid, :mid], A[:mid, mid:]
+        A21, A22 = A[mid:, :mid], A[mid:, mid:]
+        B11, B12 = B[:mid, :mid], B[:mid, mid:]
+        B21, B22 = B[mid:, :mid], B[mid:, mid:]
+
+        if not combine:
+            stack.append((A, B, True))
+            stack.extend([
+                (A12 - A22, B21 + B22, False),
+                (A21 - A11, B11 + B12, False),
+                (A11 + A12, B22, False),
+                (A22, B21 - B11, False),
+                (A11, B12 - B22, False),
+                (A21 + A22, B11, False),
+                (A11 + A22, B11 + B22, False)
+            ])
+        else:
+            M1, M2, M3, M4, M5, M6, M7 = results[-7:]
+            results = results[:-7]
+
+            C11 = M1 + M4 - M5 + M7
+            C12 = M3 + M5
+            C21 = M2 + M4
+            C22 = M1 - M2 + M3 + M6
+
+            results.append(np.vstack((np.hstack((C11, C12)),
+                                      np.hstack((C21, C22)))))
+    return results[0]
+
+
+# ===============================
+# INTERFAZ GRÁFICA
+# ===============================
+class StrassenApp(tk.Toplevel):
+    def __init__(self, master, on_back_callback):
+        super().__init__(master)
+        self.on_back = on_back_callback
+
+        self.title("Algoritmo de Strassen")
+        self.geometry("900x600")
+        self.minsize(900, 600)
+        self.resizable(False, False)
+
+        self.mode = tk.StringVar(value="random")
+        self.entries_A = []
+        self.entries_B = []
+
+        self.time_rec = 0
+        self.time_iter = 0
+
+        self.create_widgets()
+        self.center_window()
+
+    def center_window(self):
+        self.update_idletasks()
+
+        width = self.winfo_reqwidth()
+        height = self.winfo_reqheight()
+
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+
+        x = (screen_w - width) // 2
+        y = (screen_h - height) // 2
+
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
+
+
+    def create_widgets(self):
+        top = ttk.Frame(self)
+        top.pack(pady=10)
+
+        ttk.Label(top, text="Tamaño (potencia de 2):").grid(row=0, column=0)
+        self.size_entry = ttk.Entry(top, width=5)
+        self.size_entry.insert(0, "2")
+        self.size_entry.grid(row=0, column=1, padx=5)
+
+        mode_frame = ttk.LabelFrame(self, text="Modo de matrices")
+        mode_frame.pack(pady=5)
+
+        ttk.Radiobutton(mode_frame, text="Aleatorias",
+                        variable=self.mode, value="random").grid(row=0, column=0, padx=10)
+        ttk.Radiobutton(mode_frame, text="Manuales",
+                        variable=self.mode, value="manual").grid(row=0, column=1, padx=10)
+
+        ttk.Button(self, text="Generar matrices",
+                   command=self.generate_inputs).pack(pady=10)
+
+        self.matrix_frame = ttk.Frame(self)
+        self.matrix_frame.pack()
+
+        action = ttk.Frame(self)
+        action.pack(pady=10)
+
+        ttk.Button(action, text="Ejecutar Recursivo",
+                   command=self.run_recursive).grid(row=0, column=0, padx=10)
+        ttk.Button(action, text="Ejecutar Iterativo",
+                   command=self.run_iterative).grid(row=0, column=1, padx=10)
+
+        result = ttk.LabelFrame(self, text="Tiempos (ms)")
+        result.pack(pady=10)
+
+        ttk.Label(result, text="Recursivo:").grid(row=0, column=0)
+        self.rec_label = ttk.Label(result, text="0.0")
+        self.rec_label.grid(row=0, column=1)
+
+        ttk.Label(result, text="Iterativo:").grid(row=1, column=0)
+        self.iter_label = ttk.Label(result, text="0.0")
+        self.iter_label.grid(row=1, column=1)
+
+        ttk.Button(self, text="Mostrar gráfico",
+                   command=self.plot).pack(pady=10)
+
+        ttk.Button(self, text="⬅ Volver", command=self._go_back).pack()
+        container = ttk.Frame(self)
+        container.pack(fill="both", expand=True, padx=10, pady=10)
+
+        canvas = tk.Canvas(container)
+        canvas.grid(row=0, column=0, sticky="nsew")
+
+        scroll_y = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scroll_y.grid(row=0, column=1, sticky="ns")
+
+        scroll_x = ttk.Scrollbar(container, orient="horizontal", command=canvas.xview)
+        scroll_x.grid(row=1, column=0, sticky="ew")
+
+        canvas.configure(
+            yscrollcommand=scroll_y.set,
+            xscrollcommand=scroll_x.set
+        )
+
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
+
+        self.matrix_frame = ttk.Frame(canvas)
+        canvas.create_window((0, 0), window=self.matrix_frame, anchor="nw")
+
+        self.matrix_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+    # ===============================
+    # MATRICES
+    # ===============================
+    def generate_inputs(self):
+        n = int(self.size_entry.get())
+
+        if not self.is_power_of_two(n):
+            messagebox.showerror(
+                "Tamaño inválido",
+                "El tamaño debe ser una potencia de 2\n(Ej: 2, 4, 8, 16, 32...)"
+            )
+            return
+    
+        for w in self.matrix_frame.winfo_children():
+            w.destroy()
+
+        self.entries_A.clear()
+        self.entries_B.clear()
+
+        n = int(self.size_entry.get())
+
+        frameA = ttk.LabelFrame(self.matrix_frame, text="Matriz A")
+        frameB = ttk.LabelFrame(self.matrix_frame, text="Matriz B")
+        frameA.grid(row=0, column=0, padx=30)
+        frameB.grid(row=0, column=1, padx=30)
+
+        for i in range(n):
+            rowA, rowB = [], []
+            for j in range(n):
+                ea = ttk.Entry(frameA, width=4, justify="center")
+                eb = ttk.Entry(frameB, width=4, justify="center")
+                ea.grid(row=i, column=j, padx=2, pady=2)
+                eb.grid(row=i, column=j, padx=2, pady=2)
+
+                if self.mode.get() == "random":
+                    ea.insert(0, np.random.randint(0, 10))
+                    eb.insert(0, np.random.randint(0, 10))
+
+                rowA.append(ea)
+                rowB.append(eb)
+            self.entries_A.append(rowA)
+            self.entries_B.append(rowB)
+
+    def is_power_of_two(self, n):
+        return n > 0 and (n & (n - 1)) == 0
+    
+    def read_matrices(self):
+        try:
+            n = len(self.entries_A)
+            A = np.zeros((n, n), dtype=int)
+            B = np.zeros((n, n), dtype=int)
+
+            for i in range(n):
+                for j in range(n):
+                    A[i, j] = int(self.entries_A[i][j].get())
+                    B[i, j] = int(self.entries_B[i][j].get())
+            return A, B
+        except:
+            messagebox.showerror("Error", "Datos inválidos")
+            return None, None
+
+    # ===============================
+    # EJECUCIÓN
+    # ===============================
+    def run_recursive(self):
+        if not self.entries_A:
+            messagebox.showwarning("Aviso", "Primero genera las matrices")
+            return
+        A, B = self.read_matrices()
+        if A is None:
+            return
+
+        start = time.perf_counter()
+        strassen_rec(A, B)
+        self.time_rec = (time.perf_counter() - start) * 1000
+        self.rec_label.config(text=f"{self.time_rec:.4f}")
+    
+    def run_iterative(self):
+        if not self.entries_A:
+            messagebox.showwarning("Aviso", "Primero genera las matrices")
+            return
+        A, B = self.read_matrices()
+        if A is None:
+            return
+
+        start = time.perf_counter()
+        strassen_iter(A, B)
+        self.time_iter = (time.perf_counter() - start) * 1000
+        self.iter_label.config(text=f"{self.time_iter:.4f}")
+
+    def plot(self):
+        if self.time_rec == 0 or self.time_iter == 0:
+            messagebox.showwarning("Aviso", "Ejecuta ambos métodos primero")
+            return
+
+        plt.bar(["Recursivo", "Iterativo"],
+                [self.time_rec, self.time_iter])
+        plt.ylabel("Milisegundos")
+        plt.title("Comparación Strassen")
+        plt.show()
+
+    def _go_back(self):
+        self.destroy()
+        self.on_back()
+
+
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\Strassen.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\welcome.py
+--------------------------------------------------
+import tkinter as tk
+
+
+class WelcomeScreen(tk.Toplevel):
+    def __init__(self, master, next_callback):
+        super().__init__(master)
+
+        self.next_callback = next_callback
+        self.title("Bienvenido")
+        self.geometry("500x300")
+        self.configure(bg="#f6f1e7")
+        self.resizable(False, False)
+
+        self._center()
+        self.create_widgets()
+
+    def _center(self):
+        x = (self.winfo_screenwidth() - 500) // 2
+        y = (self.winfo_screenheight() - 300) // 2
+        self.geometry(f"500x300+{x}+{y}")
+
+    def create_widgets(self):
+        tk.Label(
+            self,
+            text="Algoritmos de ordenamiento",
+            font=("Helvetica", 18, "bold"),
+            bg="#f6f1e7"
+        ).pack(pady=40)
+
+        tk.Label(
+            self,
+            text="Grupo 6",
+            font=("Helvetica", 11),
+            bg="#f6f1e7"
+        ).pack(pady=10)
+
+        tk.Button(
+            self,
+            text="Iniciar",
+            font=("Helvetica", 12, "bold"),
+            width=15,
+            command=self._next
+        ).pack(pady=30)
+
+    def _next(self):
+        self.destroy()
+        self.next_callback()
+
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\welcome.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\__init__.py
+--------------------------------------------------
+
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\gui\__init__.py
+
+START_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\utils\__init__.py
+--------------------------------------------------
+
+--------------------------------------------------
+END_FILE: C:\Users\Patricio Safla\Desktop\mateo\Tarea\UCE\Cuarto Semestre\Algoritmos\Busquedas-de-ordenamiento\Algoritmos de Busqueda\utils\__init__.py
+
